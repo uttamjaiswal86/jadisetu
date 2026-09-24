@@ -1,8 +1,10 @@
-# Medicinal Crop Ecosystem — Phase 1 Discovery
+# JadiSetu — Medicinal Crop Ecosystem, Phase 1 Discovery
 
 **Status:** Draft for product and technical approval  
 **Scope:** Discovery and design only; no application code or live agronomic rules are included.  
 **Repository finding:** The supplied workspace was empty on 2026-09-24: no source files, Git repository, or existing product conventions were present.
+
+**Working project name:** JadiSetu. See [PRODUCT_CONTEXT.md](PRODUCT_CONTEXT.md) for the product vision, ecosystem context, and competitor-research guardrails.
 
 ## 1. Product architecture
 
