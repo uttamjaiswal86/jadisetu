@@ -20,18 +20,18 @@ Phase 1 proves the narrower managed lifecycle already defined in [PHASE1_DISCOVE
 
 ## Ecosystem participants to consider over time
 
-| Participant | Potential needs |
-|---|---|
-| Farmer | Land and soil records, crop choice, planting material, training, field support, monitoring, insurance status, harvest, quality, buyers, payments and history. |
-| FPO / farmer group | Member management, aggregated acreage and plans, input/harvest aggregation, quality, buyer demand, procurement, payments and traceability. |
-| Agronomist / field coordinator | Assigned portfolio, visits, soil and crop context, observations, treatment follow-up, yield ranges and alerts. |
-| Laboratory / testing agency | Sample requests, chain of custody, test methods/results, certificates and crop-specific grades. |
-| Trader / processor | Available quantity, grade, location at suitable granularity, supplier, processing records, inventory and traceability. |
-| Manufacturer / Ayurvedic company | Demand planning, required quantity/quality/date, supplier network, procurement, traceability and supply reliability. |
-| Exporter | Quality evidence, batch traceability, packaging, inventory and export documentation. |
-| Insurance provider | Authorized access to farmer/land/crop and relevant history through controlled integrations, if agreements and regulations permit. The insurer remains the risk carrier and decision maker. |
-| Logistics provider | Pickup, destination, package/quantity, delivery status and any required handling conditions. |
-| Government / institutional program | Potential schemes, training, certifications or market information, only through confirmed data-sharing arrangements and available interfaces. |
+| Participant                        | Potential needs                                                                                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Farmer                             | Land and soil records, crop choice, planting material, training, field support, monitoring, insurance status, harvest, quality, buyers, payments and history.                              |
+| FPO / farmer group                 | Member management, aggregated acreage and plans, input/harvest aggregation, quality, buyer demand, procurement, payments and traceability.                                                 |
+| Agronomist / field coordinator     | Assigned portfolio, visits, soil and crop context, observations, treatment follow-up, yield ranges and alerts.                                                                             |
+| Laboratory / testing agency        | Sample requests, chain of custody, test methods/results, certificates and crop-specific grades.                                                                                            |
+| Trader / processor                 | Available quantity, grade, location at suitable granularity, supplier, processing records, inventory and traceability.                                                                     |
+| Manufacturer / Ayurvedic company   | Demand planning, required quantity/quality/date, supplier network, procurement, traceability and supply reliability.                                                                       |
+| Exporter                           | Quality evidence, batch traceability, packaging, inventory and export documentation.                                                                                                       |
+| Insurance provider                 | Authorized access to farmer/land/crop and relevant history through controlled integrations, if agreements and regulations permit. The insurer remains the risk carrier and decision maker. |
+| Logistics provider                 | Pickup, destination, package/quantity, delivery status and any required handling conditions.                                                                                               |
+| Government / institutional program | Potential schemes, training, certifications or market information, only through confirmed data-sharing arrangements and available interfaces.                                              |
 
 Design participant-specific access on shared domain records. A common platform does not mean every participant sees all data or every participant must use the same interface.
 
@@ -48,18 +48,18 @@ The founder-provided note identified these names as examples of ecosystem capabi
 
 These are leads, not verified descriptions of current product capabilities, integrations, or commercial status. Before making strategic claims, research current public information and, where possible, speak with participants. Maintain a matrix that labels each capability **confirmed**, **probable**, or **unknown**, includes evidence and date checked, and distinguishes an organization's activity from a software feature.
 
-| Capability to compare | JadiSetu Phase 1 | Potential later scope |
-|---|---|---|
-| Farmer/FPO onboarding | Farmer records; FPO association support in data model | Full FPO/member operations and community/collector networks |
-| Land and soil | Land records, optional GPS, soil-test history | Broader GIS and historical land intelligence |
-| Crop choice | Expert-configured transparent rules | Validated predictive models, only after data and approval |
-| Cultivation and health | Plans, training, observations, treatment history | Expanded advisory, weather/risk support, optional image analysis |
-| Yield and insurance | Manual yield ranges; insurance status record | Validated forecasts and licensed-provider integrations |
-| Quality and traceability | Harvest lots, quality records, grading and package traceability | Lab integrations, processing transformations and richer chain of custody |
-| Marketplace and procurement | Managed buyer requirements and basic order workflow | Regional listings, offers, contracts and procurement network if validated |
-| Inventory, logistics, finance | Not Phase 1 | Integrations or modules based on partner need and business case |
-| Manufacturer/exporter demand | Basic buyer records and requirements | Demand planning, contract cultivation and supply forecasting |
-| Analytics / AI/ML | Operational metrics and data foundation | Forecasting or decision support after validation and consent/governance |
+| Capability to compare         | JadiSetu Phase 1                                                | Potential later scope                                                     |
+| ----------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Farmer/FPO onboarding         | Farmer records; FPO association support in data model           | Full FPO/member operations and community/collector networks               |
+| Land and soil                 | Land records, optional GPS, soil-test history                   | Broader GIS and historical land intelligence                              |
+| Crop choice                   | Expert-configured transparent rules                             | Validated predictive models, only after data and approval                 |
+| Cultivation and health        | Plans, training, observations, treatment history                | Expanded advisory, weather/risk support, optional image analysis          |
+| Yield and insurance           | Manual yield ranges; insurance status record                    | Validated forecasts and licensed-provider integrations                    |
+| Quality and traceability      | Harvest lots, quality records, grading and package traceability | Lab integrations, processing transformations and richer chain of custody  |
+| Marketplace and procurement   | Managed buyer requirements and basic order workflow             | Regional listings, offers, contracts and procurement network if validated |
+| Inventory, logistics, finance | Not Phase 1                                                     | Integrations or modules based on partner need and business case           |
+| Manufacturer/exporter demand  | Basic buyer records and requirements                            | Demand planning, contract cultivation and supply forecasting              |
+| Analytics / AI/ML             | Operational metrics and data foundation                         | Forecasting or decision support after validation and consent/governance   |
 
 Do not claim that a named competitor lacks a feature without current evidence. The comparison is for product discovery, not a feature-copy checklist.
 
@@ -80,6 +80,21 @@ Do not claim that a named competitor lacks a feature without current evidence. T
 - **Manufacturer:** Can supply meet a required quantity, specification and date?
 
 These are future decision-support questions. Phase 1 should collect reliable operational records and must not imply precise predictions or guarantees.
+
+## Multilingual medicinal-plant knowledge requirement
+
+A core product requirement is a curated medicinal-plant knowledge layer that supports farmer discovery and decision-making across India. This is not a generic plant database; it must be designed for field use and must reflect the way farmers, FPOs, and agronomists actually search for crops in local practice.
+
+The knowledge layer should cover:
+
+- scientific name and family
+- local names across Hindi, Bangla, Bhojpuri, Santali, Ol Chiki, and other regional languages
+- script variants and phonetic/transliterated search terms
+- plant part used, cultivation window, soil and climate suitability, and basic harvesting notes
+- safety and handling guidance, source confidence, and review status
+- region-specific cultivation notes and names used by local communities
+
+This knowledge should be attached to the crop catalog and crop recommendation flow so farmers can both discover a plant and connect it to local agronomic suitability, quality, and market readiness. The database should support multilingual lookup without forcing every user to think in English or formal botany terms. Language and terminology metadata must be treated as first-class product data, not an afterthought.
 
 ## Phased direction
 

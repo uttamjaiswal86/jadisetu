@@ -34,6 +34,15 @@ Every operational record has a UUID primary key, timestamps, provenance (creator
 5. Agronomist reviews rule-based crop options, with agronomic fit separated from buyer demand. The user sees score, contributing factors, missing inputs, rule-set version, caveats, and the reviewer.
 6. Farmer/coordinator selects a candidate. An agronomist approves the plan; planting date and input allocation are recorded; a crop batch is created at planting.
 
+### Plant knowledge and local-language discovery
+
+1. Farmers can search medicinal crops by scientific name, common English name, and local names in Hindi, Bangla, Bhojpuri, Santali, Ol Chiki, and other regional dialects.
+2. Every plant card includes a verified scientific name, local terms in different languages, script variants, and a user-friendly explanation of cultivation, harvesting, and part-used information.
+3. Search supports spelling variants, transliterations, and phonetic matching so farmers can find plants by the names they already use in the field.
+4. Each plant record includes agronomic details such as suitable climate, soil type, sowing window, harvest stage, disease/pest risk, and basic safety guidance.
+5. Content is reviewed with confidence labels and source attribution so uncertain or non-verified knowledge is clearly flagged before being treated as recommendation.
+6. The knowledge base supports offline access in mobile field workflows, with local-language content, quick visual references, and region-specific notes tied to actual farm conditions.
+
 ### Field operations and harvest
 
 1. Farmer sees localized tasks and crop-specific training cards; completion can be recorded offline.
@@ -99,17 +108,17 @@ Deployment starts as a small number of containers: web client, API, worker/sched
 
 ## 4. Component architecture and technology recommendation
 
-| Area | Recommendation | Reason / boundary |
-|---|---|---|
-| Staff web | React + TypeScript, using a maintained web framework (Next.js is the default candidate) | Forms, tables, dashboards, and bilingual interface; API remains the source of business rules. Confirm hosting/team familiarity before choosing framework-specific features. |
-| Buyer portal | Same web codebase, separate route group and authorization policy | Keeps initial operations lean while allowing separate branding and public/private layouts. |
-| Mobile | Flutter, Android-first | One codebase for Android and possible later iOS; local persistence, camera, GPS, and background/foreground sync adapters behind repositories. Validate target device range and offline behavior on actual field devices. |
-| API | Python + FastAPI, Pydantic schemas, SQLAlchemy 2, Alembic migrations | Typed HTTP API, input validation, migration workflow, and generated OpenAPI. Keep business logic in domain/service modules rather than route handlers. |
-| Database | PostgreSQL with PostGIS | Relational integrity for lifecycle records; optional point/polygon geodata and spatial indexes. Coordinate storage can begin with optional points; no boundaries required. |
-| Files | Private S3-compatible object storage, with metadata in PostgreSQL | Reports and images are not stored as public blobs. Access via short-lived authorized URLs; malware/content checks and size/type restrictions at upload. |
-| Auth | OIDC-compatible identity provider if available; otherwise a vetted provider-backed implementation | Avoid custom password/session cryptography. Short-lived access, refresh/session revocation, MFA for privileged roles, and server-side authorization. Provider selection is an open decision. |
-| API contract | REST under `/api/v1`, OpenAPI generated from API schemas | Browser/mobile interoperability and auditable client contracts. Use stable error envelopes, pagination, idempotency keys on sync/event creation. |
-| Delivery | Docker images; managed cloud database/object storage; GitHub Actions or equivalent | Reproducible environments, migration gates, deployment approval, backups, and basic observability without Kubernetes at pilot scale. |
+| Area         | Recommendation                                                                                    | Reason / boundary                                                                                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Staff web    | React + TypeScript, using a maintained web framework (Next.js is the default candidate)           | Forms, tables, dashboards, and bilingual interface; API remains the source of business rules. Confirm hosting/team familiarity before choosing framework-specific features.                                              |
+| Buyer portal | Same web codebase, separate route group and authorization policy                                  | Keeps initial operations lean while allowing separate branding and public/private layouts.                                                                                                                               |
+| Mobile       | Flutter, Android-first                                                                            | One codebase for Android and possible later iOS; local persistence, camera, GPS, and background/foreground sync adapters behind repositories. Validate target device range and offline behavior on actual field devices. |
+| API          | Python + FastAPI, Pydantic schemas, SQLAlchemy 2, Alembic migrations                              | Typed HTTP API, input validation, migration workflow, and generated OpenAPI. Keep business logic in domain/service modules rather than route handlers.                                                                   |
+| Database     | PostgreSQL with PostGIS                                                                           | Relational integrity for lifecycle records; optional point/polygon geodata and spatial indexes. Coordinate storage can begin with optional points; no boundaries required.                                               |
+| Files        | Private S3-compatible object storage, with metadata in PostgreSQL                                 | Reports and images are not stored as public blobs. Access via short-lived authorized URLs; malware/content checks and size/type restrictions at upload.                                                                  |
+| Auth         | OIDC-compatible identity provider if available; otherwise a vetted provider-backed implementation | Avoid custom password/session cryptography. Short-lived access, refresh/session revocation, MFA for privileged roles, and server-side authorization. Provider selection is an open decision.                             |
+| API contract | REST under `/api/v1`, OpenAPI generated from API schemas                                          | Browser/mobile interoperability and auditable client contracts. Use stable error envelopes, pagination, idempotency keys on sync/event creation.                                                                         |
+| Delivery     | Docker images; managed cloud database/object storage; GitHub Actions or equivalent                | Reproducible environments, migration gates, deployment approval, backups, and basic observability without Kubernetes at pilot scale.                                                                                     |
 
 Two alternatives considered:
 
@@ -170,36 +179,36 @@ erDiagram
 
 ## 6. Entity list and principal constraints
 
-| Entity | Key relationships and important fields / constraints |
-|---|---|
-| User, Role, Permission, UserRole, RolePermission | Unique normalized login; role assignments may be scoped to FPO/region where needed. Do not treat role alone as row-level authorization. |
-| Farmer | Unique `public_id`; language, contact, address, status, consent timestamps, optional FPO FK; avoid storing identity numbers unless approved need and retention rules exist. |
-| FPO | Organization profile and status; optional membership history if farmers may change associations. |
-| Land | Farmer FK; unique public ID; area as positive decimal + unit; optional PostGIS point/polygon; irrigation, water, tenure, previous crop, status. Coordinates and polygon must be nullable. |
-| SoilTest | Land FK; test/sample date, lab, measured numeric values, units/method where available, texture/drainage/moisture, remarks, report document FK; index `(land_id, tested_at DESC)`. Multiple historical tests allowed. |
-| Crop | Stable code, scientific name, common names/localizations, description, duration, planting/harvest windows, instructions, risks; active/version status. Crop values are curated data, not source-code constants. |
-| CropRule | Crop FK, version, input condition/config JSON with schema version, score/reason configuration, effective dates, status, reviewer and evidence reference; immutable after activation. |
-| Recommendation, RecommendationItem | Input snapshot, missing fields, rule set, separate agronomic and commercial outputs, human review status; preserve generated result. Never assert guaranteed yield/profit. |
-| CropPlan | Farmer, land, crop, optional variety, planned area, planting/expected dates, yield range, inputs/plans, target buyer, lifecycle status/version; area cannot exceed recorded land area without override/reason. |
-| SeedBatch | Crop/variety, supplier/source, batch, received date, quantity/unit, certificate document and quality status; unique supplier/batch combination where supplier exists. |
-| CropBatch | CropPlan FK, seed batch optional FK, unique QR token/public code, actual planted area/date, lifecycle status; maintain same farmer/land/crop context as parent plan. |
-| Training, TrainingCompletion | Training category, crop applicability, language/version/content references; completion unique per learner/content version as appropriate. |
-| HealthObservation | CropBatch FK, observed time, stage, symptom/status fields, location optional, remarks, author, sync metadata; photo/document links; indexed by batch and time. |
-| Treatment | CropBatch FK, problem, diagnosis source, recommended action/input/quantity/method, recommender, application and follow-up dates, result; capture advice versus actually applied treatment distinctly. |
-| YieldEstimate | CropBatch FK, min/expected/max quantity with unit, estimate date/stage/method, author and field-observation references; enforce nonnegative and `min ≤ expected ≤ max`. |
-| InsuranceRecord | CropBatch/Farmer/Land/Crop references; provider as data, policy/coverage dates and amounts, status, claim refs/status; no insurer-specific workflow dependency. Access restricted. |
-| HarvestLot | CropBatch FK, public ID, date, actual quantity/unit, moisture, methods, storage, initial observations; one-to-many from crop batch. |
-| QualityParameter | Crop FK, parameter code, unit, method and crop-specific acceptable range/spec version; governed and versioned. |
-| QualityTest | HarvestLot FK, lab, sample, date, parameter results (normalized child rows), pass/fail/pending, report document, grade, remarks; preserve retests and evaluator. |
-| Grade | Versioned crop-specific grade definition and criteria reference; do not assume a universal grading scale. |
-| PackagingBatch | HarvestLot FK, unique package ID/QR token, batch number, net weight/unit, date/type/storage/status/grade; package totals cannot exceed source lot quantity without recorded adjustment. |
-| Buyer | Organization/contact/location/type/status; buyer private data not visible to other buyers. |
-| BuyerRequirement | Buyer and crop FKs, quantity/unit, spec version, delivery date, open/fulfilled status; commercial interest does not alter agronomic score. |
-| PurchaseOrder, OrderLine | Buyer, optional requirement, statuses, dates and agreed terms; lines allocate package/lot quantity with checks against available quantity; record cancellation/fulfillment history. |
-| Document | Private object key, MIME/size/checksum, owner/reference, uploader, scan state, visibility classification, retention/deletion metadata; object key never public. |
-| Notification | Recipient, channel, template/language, event reference, delivery state/provider ID/retries; store minimum necessary payload. |
-| AuditLog | Actor, action, entity type/id, time, request/correlation ID, old/new change set with sensitive values redacted; append-only permissions and retention policy. |
-| OutboxEvent / SyncOperation | Transactional event delivery and mobile idempotency: operation UUID, actor/device, entity, client base version, payload/schema version, status/result. |
+| Entity                                           | Key relationships and important fields / constraints                                                                                                                                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| User, Role, Permission, UserRole, RolePermission | Unique normalized login; role assignments may be scoped to FPO/region where needed. Do not treat role alone as row-level authorization.                                                                              |
+| Farmer                                           | Unique `public_id`; language, contact, address, status, consent timestamps, optional FPO FK; avoid storing identity numbers unless approved need and retention rules exist.                                          |
+| FPO                                              | Organization profile and status; optional membership history if farmers may change associations.                                                                                                                     |
+| Land                                             | Farmer FK; unique public ID; area as positive decimal + unit; optional PostGIS point/polygon; irrigation, water, tenure, previous crop, status. Coordinates and polygon must be nullable.                            |
+| SoilTest                                         | Land FK; test/sample date, lab, measured numeric values, units/method where available, texture/drainage/moisture, remarks, report document FK; index `(land_id, tested_at DESC)`. Multiple historical tests allowed. |
+| Crop                                             | Stable code, scientific name, common names/localizations, description, duration, planting/harvest windows, instructions, risks; active/version status. Crop values are curated data, not source-code constants.      |
+| CropRule                                         | Crop FK, version, input condition/config JSON with schema version, score/reason configuration, effective dates, status, reviewer and evidence reference; immutable after activation.                                 |
+| Recommendation, RecommendationItem               | Input snapshot, missing fields, rule set, separate agronomic and commercial outputs, human review status; preserve generated result. Never assert guaranteed yield/profit.                                           |
+| CropPlan                                         | Farmer, land, crop, optional variety, planned area, planting/expected dates, yield range, inputs/plans, target buyer, lifecycle status/version; area cannot exceed recorded land area without override/reason.       |
+| SeedBatch                                        | Crop/variety, supplier/source, batch, received date, quantity/unit, certificate document and quality status; unique supplier/batch combination where supplier exists.                                                |
+| CropBatch                                        | CropPlan FK, seed batch optional FK, unique QR token/public code, actual planted area/date, lifecycle status; maintain same farmer/land/crop context as parent plan.                                                 |
+| Training, TrainingCompletion                     | Training category, crop applicability, language/version/content references; completion unique per learner/content version as appropriate.                                                                            |
+| HealthObservation                                | CropBatch FK, observed time, stage, symptom/status fields, location optional, remarks, author, sync metadata; photo/document links; indexed by batch and time.                                                       |
+| Treatment                                        | CropBatch FK, problem, diagnosis source, recommended action/input/quantity/method, recommender, application and follow-up dates, result; capture advice versus actually applied treatment distinctly.                |
+| YieldEstimate                                    | CropBatch FK, min/expected/max quantity with unit, estimate date/stage/method, author and field-observation references; enforce nonnegative and `min ≤ expected ≤ max`.                                              |
+| InsuranceRecord                                  | CropBatch/Farmer/Land/Crop references; provider as data, policy/coverage dates and amounts, status, claim refs/status; no insurer-specific workflow dependency. Access restricted.                                   |
+| HarvestLot                                       | CropBatch FK, public ID, date, actual quantity/unit, moisture, methods, storage, initial observations; one-to-many from crop batch.                                                                                  |
+| QualityParameter                                 | Crop FK, parameter code, unit, method and crop-specific acceptable range/spec version; governed and versioned.                                                                                                       |
+| QualityTest                                      | HarvestLot FK, lab, sample, date, parameter results (normalized child rows), pass/fail/pending, report document, grade, remarks; preserve retests and evaluator.                                                     |
+| Grade                                            | Versioned crop-specific grade definition and criteria reference; do not assume a universal grading scale.                                                                                                            |
+| PackagingBatch                                   | HarvestLot FK, unique package ID/QR token, batch number, net weight/unit, date/type/storage/status/grade; package totals cannot exceed source lot quantity without recorded adjustment.                              |
+| Buyer                                            | Organization/contact/location/type/status; buyer private data not visible to other buyers.                                                                                                                           |
+| BuyerRequirement                                 | Buyer and crop FKs, quantity/unit, spec version, delivery date, open/fulfilled status; commercial interest does not alter agronomic score.                                                                           |
+| PurchaseOrder, OrderLine                         | Buyer, optional requirement, statuses, dates and agreed terms; lines allocate package/lot quantity with checks against available quantity; record cancellation/fulfillment history.                                  |
+| Document                                         | Private object key, MIME/size/checksum, owner/reference, uploader, scan state, visibility classification, retention/deletion metadata; object key never public.                                                      |
+| Notification                                     | Recipient, channel, template/language, event reference, delivery state/provider ID/retries; store minimum necessary payload.                                                                                         |
+| AuditLog                                         | Actor, action, entity type/id, time, request/correlation ID, old/new change set with sensitive values redacted; append-only permissions and retention policy.                                                        |
+| OutboxEvent / SyncOperation                      | Transactional event delivery and mobile idempotency: operation UUID, actor/device, entity, client base version, payload/schema version, status/result.                                                               |
 
 Use FK constraints, `CHECK` constraints for row-local numeric/status rules, unique constraints for IDs and relationship keys, and indexes for common filters/joins. Add GiST indexes to spatial columns if spatial lookup is needed. Avoid giant JSON documents for primary business data; JSON is suitable for versioned rule inputs, extensible lab parameter values with schema/version, and audit change details when normalized query needs are limited.
 
@@ -229,33 +238,33 @@ Allow `CANCELLED` only before planting; allow `ABANDONED` with reason from activ
 
 All routes use `/api/v1`, JSON schemas, authentication except explicitly published buyer data and login/health routes, cursor or bounded page pagination, server-side authorization, and consistent errors (`code`, `message`, `field_errors`, `request_id`). Mutations accept an idempotency key where clients may retry. Resource IDs in URLs are UUIDs; operational IDs are response fields. State changes use explicit action routes and concurrency versions, not arbitrary status assignment.
 
-| Module | Initial route outline |
-|---|---|
-| `/auth` | `POST /sessions`, `DELETE /sessions/current`, `POST /sessions/refresh` (if provider model supports it), `GET /me`; OIDC callbacks handled by configured identity provider. |
-| `/users`, `/roles` | Staff user administration, role assignment and permission catalog; privileged and audited. |
-| `/farmers` | `GET/POST /farmers`, `GET/PATCH /farmers/{id}`, status and FPO assignment actions. |
-| `/lands` | `GET/POST /lands`, `GET/PATCH /lands/{id}`, optional `POST /lands/{id}/boundary`; authorized GPS capture metadata. |
-| `/soil-tests` | `GET/POST /soil-tests`, `GET/PATCH /soil-tests/{id}`, attach report through `/documents`; history filtered by land. |
-| `/crops`, `/crop-rules` | Crop catalog read/write, versions and rule validation/approval/activation endpoints; no client edits to active rules. |
-| `/recommendations` | `POST /recommendations/evaluate`; `GET /recommendations/{id}`; `POST /recommendations/{id}/review`; persist snapshot and rule version. |
-| `/crop-plans` | `GET/POST /crop-plans`, `GET/PATCH`, `POST /{id}/submit`, `/approve`, `/plan`, `/cancel`. |
-| `/seed-batches` | CRUD/list, receive/quality status, allocation lookup; certificate via document service. |
-| `/crop-batches` | Create at planting, list/detail, authorized lifecycle action, controlled QR public payload endpoint with opaque token. |
-| `/training` | List/filter content, content CRUD for staff, `POST /{id}/completions`, completion history. |
-| `/monitoring` | `GET/POST /crop-batches/{id}/observations`, observation detail/edit with version check, photo attachments. |
-| `/treatments` | Create/list/update result/follow-up against crop batch; recommendations attributed to staff. |
-| `/yield-estimates` | `GET/POST /crop-batches/{id}/yield-estimates`; range and method validation. |
-| `/insurance` | Restricted record create/list/update/status event; provider adapter callback interface remains provider-specific and deferred. |
-| `/harvest` | Create/list harvest lots by crop batch, detail/adjustment action with reason. |
-| `/quality` | Create quality test, append parameter results, attach report, authorized result/grade review. |
-| `/packaging` | Create package batches, list available, reserve/release, update status; allocation guarded transactionally. |
-| `/buyers`, `/buyer-requirements` | Buyer and requirement CRUD, status actions and match suggestions for staff. |
-| `/purchase-orders` | Create, confirm, cancel and fulfill order; order lines allocate package quantity with concurrency control. |
-| `/dashboard` | Role-scoped summary counters and bounded time series; aggregate endpoints, no unrestricted data dump. |
-| `/notifications` | Preference, inbox/read state, staff send where authorized; provider delivery is asynchronous. |
-| `/documents` | Initiate upload, complete upload, metadata/download authorization, quarantine/review state. Never return permanent public URLs. |
-| `/sync` | `GET /work-packs`, `POST /operations`, `GET /operations/{id}`, `POST /pull` using cursor and per-item outcomes. |
-| `/audit`, `/exports` | Restricted search/export with filters, purpose, audit, and bounded asynchronous jobs. |
+| Module                           | Initial route outline                                                                                                                                                      |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/auth`                          | `POST /sessions`, `DELETE /sessions/current`, `POST /sessions/refresh` (if provider model supports it), `GET /me`; OIDC callbacks handled by configured identity provider. |
+| `/users`, `/roles`               | Staff user administration, role assignment and permission catalog; privileged and audited.                                                                                 |
+| `/farmers`                       | `GET/POST /farmers`, `GET/PATCH /farmers/{id}`, status and FPO assignment actions.                                                                                         |
+| `/lands`                         | `GET/POST /lands`, `GET/PATCH /lands/{id}`, optional `POST /lands/{id}/boundary`; authorized GPS capture metadata.                                                         |
+| `/soil-tests`                    | `GET/POST /soil-tests`, `GET/PATCH /soil-tests/{id}`, attach report through `/documents`; history filtered by land.                                                        |
+| `/crops`, `/crop-rules`          | Crop catalog read/write, versions and rule validation/approval/activation endpoints; no client edits to active rules.                                                      |
+| `/recommendations`               | `POST /recommendations/evaluate`; `GET /recommendations/{id}`; `POST /recommendations/{id}/review`; persist snapshot and rule version.                                     |
+| `/crop-plans`                    | `GET/POST /crop-plans`, `GET/PATCH`, `POST /{id}/submit`, `/approve`, `/plan`, `/cancel`.                                                                                  |
+| `/seed-batches`                  | CRUD/list, receive/quality status, allocation lookup; certificate via document service.                                                                                    |
+| `/crop-batches`                  | Create at planting, list/detail, authorized lifecycle action, controlled QR public payload endpoint with opaque token.                                                     |
+| `/training`                      | List/filter content, content CRUD for staff, `POST /{id}/completions`, completion history.                                                                                 |
+| `/monitoring`                    | `GET/POST /crop-batches/{id}/observations`, observation detail/edit with version check, photo attachments.                                                                 |
+| `/treatments`                    | Create/list/update result/follow-up against crop batch; recommendations attributed to staff.                                                                               |
+| `/yield-estimates`               | `GET/POST /crop-batches/{id}/yield-estimates`; range and method validation.                                                                                                |
+| `/insurance`                     | Restricted record create/list/update/status event; provider adapter callback interface remains provider-specific and deferred.                                             |
+| `/harvest`                       | Create/list harvest lots by crop batch, detail/adjustment action with reason.                                                                                              |
+| `/quality`                       | Create quality test, append parameter results, attach report, authorized result/grade review.                                                                              |
+| `/packaging`                     | Create package batches, list available, reserve/release, update status; allocation guarded transactionally.                                                                |
+| `/buyers`, `/buyer-requirements` | Buyer and requirement CRUD, status actions and match suggestions for staff.                                                                                                |
+| `/purchase-orders`               | Create, confirm, cancel and fulfill order; order lines allocate package quantity with concurrency control.                                                                 |
+| `/dashboard`                     | Role-scoped summary counters and bounded time series; aggregate endpoints, no unrestricted data dump.                                                                      |
+| `/notifications`                 | Preference, inbox/read state, staff send where authorized; provider delivery is asynchronous.                                                                              |
+| `/documents`                     | Initiate upload, complete upload, metadata/download authorization, quarantine/review state. Never return permanent public URLs.                                            |
+| `/sync`                          | `GET /work-packs`, `POST /operations`, `GET /operations/{id}`, `POST /pull` using cursor and per-item outcomes.                                                            |
+| `/audit`, `/exports`             | Restricted search/export with filters, purpose, audit, and bounded asynchronous jobs.                                                                                      |
 
 The generated OpenAPI contract is checked into or published from the backend build; clients consume typed generated API models where useful. API implementation and schema are Sprint 0 design artifacts; detailed request/response examples should be completed before each sprint endpoint is built.
 
@@ -263,17 +272,17 @@ The generated OpenAPI contract is checked into or published from the backend bui
 
 Use named roles mapped to permissions; enforce permissions plus record scope (assigned farmer/FPO/region and purpose) on the server for every read and write. Deny by default. Role names are seed data and new roles can be added without code branches. A user can hold multiple roles. Buyer accounts are scoped to their buyer organization. Staff access to farmer contact, exact location, KYC references, and insurance data is separately permissioned and audited.
 
-| Capability | Super Admin | Admin | Agronomist | Field Coordinator | Quality Manager | Buyer | Farmer |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Manage users, global roles/config | Yes | Scoped | No | No | No | No | No |
-| Farmer profile / land operations | Yes | Yes | Read assigned | Create/update assigned | Limited read | No | Own read / approved edits |
-| Soil tests / crop rules | Yes | Yes | Create/review/activate rules | Capture assigned tests | No | No | Own read |
-| Recommendations / plan approval | Yes | Yes | Review/approve | Draft/capture | No | No | Own view/acceptance |
-| Field observations / treatments | Yes | Yes | Review/recommend | Record assigned | Read | No | Own tasks/observations |
-| Insurance records | Restricted | Restricted | Limited assigned | Capture offer/status only | No | No | Own summary |
-| Harvest / quality / packages | Yes | Yes | Read | Capture harvest | Create/review quality and grade; packaging as delegated | Published lots only | Own batch/lot summary |
-| Buyers / requirements / orders | Yes | Yes | Read | No | Read relevant lots | Own profile/requirements/orders | Own sale information as approved |
-| Audit/export | Yes | Yes, scoped | No | No | Quality scope | Own order records | Own data export request |
+| Capability                        | Super Admin |       Admin |                   Agronomist |         Field Coordinator |                                         Quality Manager |                           Buyer |                           Farmer |
+| --------------------------------- | ----------: | ----------: | ---------------------------: | ------------------------: | ------------------------------------------------------: | ------------------------------: | -------------------------------: |
+| Manage users, global roles/config |         Yes |      Scoped |                           No |                        No |                                                      No |                              No |                               No |
+| Farmer profile / land operations  |         Yes |         Yes |                Read assigned |    Create/update assigned |                                            Limited read |                              No |        Own read / approved edits |
+| Soil tests / crop rules           |         Yes |         Yes | Create/review/activate rules |    Capture assigned tests |                                                      No |                              No |                         Own read |
+| Recommendations / plan approval   |         Yes |         Yes |               Review/approve |             Draft/capture |                                                      No |                              No |              Own view/acceptance |
+| Field observations / treatments   |         Yes |         Yes |             Review/recommend |           Record assigned |                                                    Read |                              No |           Own tasks/observations |
+| Insurance records                 |  Restricted |  Restricted |             Limited assigned | Capture offer/status only |                                                      No |                              No |                      Own summary |
+| Harvest / quality / packages      |         Yes |         Yes |                         Read |           Capture harvest | Create/review quality and grade; packaging as delegated |             Published lots only |            Own batch/lot summary |
+| Buyers / requirements / orders    |         Yes |         Yes |                         Read |                        No |                                      Read relevant lots | Own profile/requirements/orders | Own sale information as approved |
+| Audit/export                      |         Yes | Yes, scoped |                           No |                        No |                                           Quality scope |               Own order records |          Own data export request |
 
 Grant `SUPER_ADMIN` sparingly, require MFA for privileged staff, and log role changes. Farmers and buyers may not update authoritative agronomic, test, grade, or sale status records directly.
 
@@ -334,17 +343,17 @@ Each operation carries a client UUID, device/install ID, schema version, actor, 
 
 The requested sequence is retained, with the pilot workflow receiving priority and buyer portal/operational hardening included before broad expansion.
 
-| Sprint | Outcome / included modules | Exit evidence |
-|---|---|---|
-| 0 — Discovery | PRD, journeys, architecture, ER/API/security/deployment design, assumptions and approvals | Product and technical owners approve scope, open decisions are resolved or explicitly deferred. |
-| 1 — Identity + farm base | Auth, RBAC, audit foundation, Farmer/FPO, Land, Soil Test, private documents | Staff can onboard farmer/land, attach and retrieve authorized soil report, view history. |
-| 2 — Plan | Crop catalog, versioned configurable rules, recommendation record/review, crop plan | Reproducible rule-based recommendation with explanation and human-reviewed plan. |
-| 3 — Plant | Seed batch, planting allocation, crop batch/QR, training content and completion | Planted batch links to land/plan/seed lot; controlled QR reveals approved details. |
-| 4 — Field operations | Task list, monitoring, photos, treatment, field visits, notification abstraction | Staff records observations/treatments; farmer sees assigned localized tasks. |
-| 5 — Production | Yield estimates, harvest lots, quality tests, grade and packaging | Lot/package traceable to crop batch with quality-controlled availability. |
-| 6 — Demand | Buyer records, requirements, buyer portal, package availability, basic purchase order and fulfillment | Buyer sees only published lots; requirement/order allocations cannot oversell. |
-| 7 — Operations | Role-scoped dashboards, reports/exports, audit search, pilot data quality tools | KPI definitions reconcile to source records; exports are authorized and audited. |
-| 8 — Field readiness | Offline sync, performance, security review, accessibility/localization, deployment/backup/recovery | Representative device/offline pilot and operational readiness sign-off. |
+| Sprint                   | Outcome / included modules                                                                            | Exit evidence                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 0 — Discovery            | PRD, journeys, architecture, ER/API/security/deployment design, assumptions and approvals             | Product and technical owners approve scope, open decisions are resolved or explicitly deferred. |
+| 1 — Identity + farm base | Auth, RBAC, audit foundation, Farmer/FPO, Land, Soil Test, private documents                          | Staff can onboard farmer/land, attach and retrieve authorized soil report, view history.        |
+| 2 — Plan                 | Crop catalog, versioned configurable rules, recommendation record/review, crop plan                   | Reproducible rule-based recommendation with explanation and human-reviewed plan.                |
+| 3 — Plant                | Seed batch, planting allocation, crop batch/QR, training content and completion                       | Planted batch links to land/plan/seed lot; controlled QR reveals approved details.              |
+| 4 — Field operations     | Task list, monitoring, photos, treatment, field visits, notification abstraction                      | Staff records observations/treatments; farmer sees assigned localized tasks.                    |
+| 5 — Production           | Yield estimates, harvest lots, quality tests, grade and packaging                                     | Lot/package traceable to crop batch with quality-controlled availability.                       |
+| 6 — Demand               | Buyer records, requirements, buyer portal, package availability, basic purchase order and fulfillment | Buyer sees only published lots; requirement/order allocations cannot oversell.                  |
+| 7 — Operations           | Role-scoped dashboards, reports/exports, audit search, pilot data quality tools                       | KPI definitions reconcile to source records; exports are authorized and audited.                |
+| 8 — Field readiness      | Offline sync, performance, security review, accessibility/localization, deployment/backup/recovery    | Representative device/offline pilot and operational readiness sign-off.                         |
 
 Mobile offline foundations should be prototyped early in Sprint 1/2, but broad sync scope ships in Sprint 8 after data ownership and conflict rules are agreed. Do not defer validation of low-connectivity devices until the final sprint.
 
@@ -352,39 +361,39 @@ Mobile offline foundations should be prototyped early in Sprint 1/2, but broad s
 
 Relative estimates for a small experienced cross-functional team; XS (1–2 person-weeks), S (2–4), M (4–7), L (7–12), XL (12+). These exclude external approvals, provider onboarding, production data cleanup and unknown device constraints; estimates must be recalibrated after decision answers and a device/site review.
 
-| Module | Estimate | Main complexity driver |
-|---|---:|---|
-| Discovery, workflows, UX language/content | M | Agreeing operational ownership, consent and agronomy review process. |
-| Auth, RBAC, audit | L | Row-level staff scope, buyer/farmer isolation, privacy/audit completeness. |
-| Farmer, FPO, land, GPS | M | Data quality, duplicate detection, optional geometry and assignment model. |
-| Soil tests, documents | M | Lab variants, units, attachments, authorization and history. |
-| Crop catalog/rules/recommendations | L | Rule configurability, versioning, missing-data behavior, expert validation. |
-| Plans, state machine, seed/crop batches, QR | M | Cross-entity invariants, allocation, secure public traceability. |
-| Training and localization | M | Hindi content production, low-literacy UX, media delivery. |
-| Monitoring, photos, treatment, tasks | L | Field usability, treatment provenance, offline capture. |
-| Yield, harvest, quality, grade, packaging | L | Units, retesting, quality specs, quantity reconciliation and traceability. |
-| Buyer requirements, portal, procurement | L | Public/private visibility, demand matching and inventory allocation. |
-| Dashboard, export, reporting | M | KPI definitions, scoped aggregation, privacy and data reconciliation. |
-| Offline sync and mobile hardening | XL | Conflict handling, media retry, device storage, network variability. |
-| Notifications and integrations | M | Provider approvals, delivery/retry semantics, consent and template operations. |
-| Deployment, observability, security hardening | M | Cloud choice, backups, monitoring, operational ownership. |
+| Module                                        | Estimate | Main complexity driver                                                         |
+| --------------------------------------------- | -------: | ------------------------------------------------------------------------------ |
+| Discovery, workflows, UX language/content     |        M | Agreeing operational ownership, consent and agronomy review process.           |
+| Auth, RBAC, audit                             |        L | Row-level staff scope, buyer/farmer isolation, privacy/audit completeness.     |
+| Farmer, FPO, land, GPS                        |        M | Data quality, duplicate detection, optional geometry and assignment model.     |
+| Soil tests, documents                         |        M | Lab variants, units, attachments, authorization and history.                   |
+| Crop catalog/rules/recommendations            |        L | Rule configurability, versioning, missing-data behavior, expert validation.    |
+| Plans, state machine, seed/crop batches, QR   |        M | Cross-entity invariants, allocation, secure public traceability.               |
+| Training and localization                     |        M | Hindi content production, low-literacy UX, media delivery.                     |
+| Monitoring, photos, treatment, tasks          |        L | Field usability, treatment provenance, offline capture.                        |
+| Yield, harvest, quality, grade, packaging     |        L | Units, retesting, quality specs, quantity reconciliation and traceability.     |
+| Buyer requirements, portal, procurement       |        L | Public/private visibility, demand matching and inventory allocation.           |
+| Dashboard, export, reporting                  |        M | KPI definitions, scoped aggregation, privacy and data reconciliation.          |
+| Offline sync and mobile hardening             |       XL | Conflict handling, media retry, device storage, network variability.           |
+| Notifications and integrations                |        M | Provider approvals, delivery/retry semantics, consent and template operations. |
+| Deployment, observability, security hardening |        M | Cloud choice, backups, monitoring, operational ownership.                      |
 
 ## 16. Risks and assumptions
 
-| Risk / assumption | Response |
-|---|---|
-| Agronomic ranges or treatment advice are not yet validated | Ship no active production rules until qualified experts approve source, units, locality and version. Seed catalog may contain draft placeholders only. |
-| Land area, boundary, and GPS precision vary | Store declared area and capture method; point and polygon optional; show precision/provenance; never infer title or exact boundary. |
-| Farmer identity/document collection may be excessive | Decide minimum fields, purpose, access, retention and consent before onboarding; default to no identity document requirement. |
-| Connectivity and Android device capability are unknown | Field-test device models, storage, camera, GPS, and sync on target sites before committing offline scope. |
-| Buyer demand can bias farm decisions | Keep commercial signal separate from agronomic suitability; expose only as an independent factor requiring farmer/agronomist decision. |
-| Crop yield, price, and margin are uncertain | Store ranges and actual observations; communicate estimates and exclusions; never guarantee yield, profit, insurance or purchase. |
-| Labs and quality methods may differ | Model lab/method/unit and versioned crop-specific parameters; define acceptance policy with buyers and experts. |
-| Human-readable IDs can collide across regions/years | UUID is canonical; generate public IDs transactionally with scoped sequences and unique constraints. |
-| Offline conflict or lost device exposes sensitive cache | Minimize cached personal data, encrypt, constrain assignments/expiry, provide logout wipe and revocation procedure. |
-| External identity, map, SMS, WhatsApp, email and storage providers are undecided | Use adapters; choose based on cost, rural coverage, data handling, delivery terms and account availability. |
-| Pilot operation includes only 25 farmers and a few staff/buyers | Keep deployment simple; use operational support tools, imports, and transparent manual review where automation is not justified. |
-| No existing repository, team profile, hosting account or product data was supplied | Recommendations are provisional; confirm team skills, hosting and data ownership before Sprint 1. |
+| Risk / assumption                                                                  | Response                                                                                                                                               |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Agronomic ranges or treatment advice are not yet validated                         | Ship no active production rules until qualified experts approve source, units, locality and version. Seed catalog may contain draft placeholders only. |
+| Land area, boundary, and GPS precision vary                                        | Store declared area and capture method; point and polygon optional; show precision/provenance; never infer title or exact boundary.                    |
+| Farmer identity/document collection may be excessive                               | Decide minimum fields, purpose, access, retention and consent before onboarding; default to no identity document requirement.                          |
+| Connectivity and Android device capability are unknown                             | Field-test device models, storage, camera, GPS, and sync on target sites before committing offline scope.                                              |
+| Buyer demand can bias farm decisions                                               | Keep commercial signal separate from agronomic suitability; expose only as an independent factor requiring farmer/agronomist decision.                 |
+| Crop yield, price, and margin are uncertain                                        | Store ranges and actual observations; communicate estimates and exclusions; never guarantee yield, profit, insurance or purchase.                      |
+| Labs and quality methods may differ                                                | Model lab/method/unit and versioned crop-specific parameters; define acceptance policy with buyers and experts.                                        |
+| Human-readable IDs can collide across regions/years                                | UUID is canonical; generate public IDs transactionally with scoped sequences and unique constraints.                                                   |
+| Offline conflict or lost device exposes sensitive cache                            | Minimize cached personal data, encrypt, constrain assignments/expiry, provide logout wipe and revocation procedure.                                    |
+| External identity, map, SMS, WhatsApp, email and storage providers are undecided   | Use adapters; choose based on cost, rural coverage, data handling, delivery terms and account availability.                                            |
+| Pilot operation includes only 25 farmers and a few staff/buyers                    | Keep deployment simple; use operational support tools, imports, and transparent manual review where automation is not justified.                       |
+| No existing repository, team profile, hosting account or product data was supplied | Recommendations are provisional; confirm team skills, hosting and data ownership before Sprint 1.                                                      |
 
 ## 17. Questions requiring business decisions
 
